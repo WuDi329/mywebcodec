@@ -1,0 +1,120 @@
+{% load static %}
+<!doctype html>
+<head>
+<title>WebCodecs Animated GIF Renderer</title>
+<meta http-equiv="origin-trial" content="ArdlZia9G23wi6S2x/vVoTla5x9r1wtreSPqhUq36tpGH7HRmAkPgpBnpkfePFeClDJDzzYAhtDPoI5hJioArAYAAABjeyJvcmlnaW4iOiJodHRwczovL3czYy5naXRodWIuaW86NDQzIiwiZmVhdHVyZSI6IldlYkNvZGVjcyIsImV4cGlyeSI6MTYzODQwMzE5OSwiaXNTdWJkb21haW4iOnRydWV9"/>
+</head>
+<canvas width="320" height="270"></canvas>
+<br/><br/>
+<textarea style="width: 640px; height: 270px"></textarea>
+<script>
+let imageDecoder = null;
+let imageIndex = 0;
+let times = 0;
+
+function log(str) {
+  document.querySelector('textarea').value += str + '\n';
+}
+
+function renderImage(result) {
+    console.log(times++);
+  const canvas = document.querySelector('canvas');
+  //HTMLCanvasElement.getContext() 方法返回canvas 的上下文，"2d", 建立一个 CanvasRenderingContext2D 二维渲染上下文。
+  const canvasContext = canvas.getContext('2d');
+
+  // image.result = videoframe
+  canvasContext.drawImage(result.image, 0, 0);
+
+  const track = imageDecoder.tracks.selectedTrack;
+
+  // We check complete here since `frameCount` won't be stable until all data
+  // has been received. This may cause us to receive a RangeError during the
+  // decode() call below which needs to be handled.
+  if (imageDecoder.complete) {
+    if (track.frameCount == 1)
+      return;
+
+    if (imageIndex + 1 >= track.frameCount)
+      imageIndex = 0;
+  }
+
+  //console.log(result.image.duration)  40000
+
+  // Decode the next frame ahead of display so it's ready in time.
+  imageDecoder.decode({frameIndex: ++imageIndex})
+      .then(
+          nextResult => setTimeout(
+              _ => {
+                renderImage(nextResult);
+              },
+              result.image.duration / 1000.0))
+      .catch(e => {
+        // We can end up requesting an imageIndex past the end since we're using
+        // a ReadableStrem from fetch(), when this happens just wrap around.
+        if (e instanceof RangeError) {
+          imageIndex = 0;
+          //frameindex : An integer representing the index of the frame to decode. Defaults to 0 (the first frame).
+          imageDecoder.decode({frameIndex: imageIndex}).then(renderImage);
+        } else {
+          throw e;
+        }
+      });
+}
+
+function logMetadata() {
+  log('imageDecoder.type = ' + imageDecoder.type);
+  log('imageDecoder.tracks.length = ' + imageDecoder.tracks.length);
+  log('');
+
+  function logTracks() {
+    for (let i = 0; i < imageDecoder.tracks.length; ++i) {
+      const track = imageDecoder.tracks[i];
+      log(`track[${i}].frameCount = ` + track.frameCount);
+      log(`track[${i}].repetitionCount = ` + track.repetitionCount);
+      //The animated property of the ImageTrack interface returns true if the track is animated and therefore has multiple frames.
+      log(`track[${i}].animated = ` + track.animated);
+      log(`track[${i}].selected = ` + track.selected);
+    }
+  }
+
+  //complete : Returns a boolean value indicating whether encoded data is completely buffered.
+  if (!imageDecoder.complete) {
+    log('Partial metadata while still loading:');
+    log('imageDecoder.complete = ' + imageDecoder.complete);
+    logTracks();
+    log('');
+  }
+
+  //completed: Returns a Promise that resolves once complete is true.
+  imageDecoder.completed.then(_ => {
+    log('Final metadata after all data received:');
+    log('imageDecoder.complete = ' + imageDecoder.complete);
+    logTracks();
+  });
+}
+
+function decodeImage(imageByteStream) {
+  if (typeof ImageDecoder === 'undefined') {
+    log('Your browser does not support the WebCodecs ImageDecoder API.');
+    return;
+  }
+
+  //Creates a new ImageDecoder object.
+  imageDecoder = new ImageDecoder({data: imageByteStream, type: 'image/gif'});
+  //track : Returns an ImageTrackList object listing the available tracks and providing a method for selecting a track to decode.
+  //ready : Returns a promise that resolves once the ImageTrackList has been populated with tracks.
+  imageDecoder.tracks.ready.then(logMetadata);
+  //decode : Enqueues a control message to decode the frame of an image.
+  //return value ： A promise that resolves with an object containing the following members:  image & complete
+  imageDecoder.decode({frameIndex: imageIndex}).then(renderImage);
+}
+
+//et the source gif
+fetch('{% static 'media/giphy.gif' %}')
+    .then(response => {
+        console.log("response body is ")
+        console.log(response.body)
+        decodeImage(response.body)
+    });
+
+</script>
