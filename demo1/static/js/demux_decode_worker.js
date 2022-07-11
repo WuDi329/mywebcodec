@@ -29,6 +29,7 @@ self.addEventListener('message', function(e) {
 
   let decoder = new VideoDecoder({
     output : frame => {
+      console.log(frame.format)
       ctx.drawImage(frame, 0, 0, offscreen.width, offscreen.height);
 
       // Close ASAP.

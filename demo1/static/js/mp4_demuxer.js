@@ -104,7 +104,7 @@ class MP4Source {
   onSamples(track_id, ref, samples) {
     console.log("onsamples...")
     for (const sample of samples) {
-      console.log("lalalal")
+      // console.log("lalalal")
       const type = sample.is_sync ? "key" : "delta";
 
       const chunk = new EncodedVideoChunk({

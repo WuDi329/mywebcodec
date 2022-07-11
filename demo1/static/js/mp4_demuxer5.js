@@ -1,5 +1,3 @@
-
-
 class MP4Source {
   constructor(uri) {
     this.file = MP4Box.createFile();
@@ -12,6 +10,7 @@ class MP4Source {
     // user is the caller of the segmentation, for this track, and samples is an Array of samples.
     //  function (id, user, samples)
     this.file.onSamples = this.onSamples.bind(this);
+
 
     //debugger
     fetch(uri).then(response => {
@@ -105,7 +104,6 @@ class MP4Source {
   onSamples(track_id, ref, samples) {
     console.log("onsamples...")
     for (const sample of samples) {
-      console.log("lalalal")
       const type = sample.is_sync ? "key" : "delta";
 
       const chunk = new EncodedVideoChunk({
@@ -117,6 +115,7 @@ class MP4Source {
 
       this._onChunk(chunk);
     }
+
   }
 }
 
